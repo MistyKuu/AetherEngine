@@ -4096,12 +4096,11 @@ public final class AetherEngine: ObservableObject {
     /// tvOS keeps `.longFormAudio` for HDMI route negotiation (#24); on iOS that policy marks the
     /// process as a long-form audio client, which pins AVKit's
     /// `AVPictureInPictureController.isPictureInPicturePossible` to false for any host-built PiP
-    /// controller around the engine's player layer, so iOS declares `.longFormVideo`: the AirPlay route
-    /// of a video app, which another app's sound neither takes over nor interrupts.
+    /// controller around the engine's player layer, so iOS declares `.default`.
     #if os(tvOS)
     nonisolated static let audioSessionRouteSharingPolicy: AVAudioSession.RouteSharingPolicy = .longFormAudio
     #else
-    nonisolated static let audioSessionRouteSharingPolicy: AVAudioSession.RouteSharingPolicy = .longFormVideo
+    nonisolated static let audioSessionRouteSharingPolicy: AVAudioSession.RouteSharingPolicy = .default
     #endif
     #endif
 
@@ -4135,7 +4134,7 @@ public final class AetherEngine: ObservableObject {
     nonisolated private static func configureAudioSessionCategory() -> Bool {
         let session = AVAudioSession.sharedInstance()
         do {
-            if session.category != .playback || session.routeSharingPolicy != audioSessionRouteSharingPolicy {
+            if session.category != .playback {
                 try session.setCategory(.playback, mode: .moviePlayback, policy: audioSessionRouteSharingPolicy)
             }
             if !session.supportsMultichannelContent {

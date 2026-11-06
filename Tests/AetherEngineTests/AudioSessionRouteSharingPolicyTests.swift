@@ -14,7 +14,7 @@ final class AudioSessionRouteSharingPolicyTests: XCTestCase {
         #if os(tvOS)
         return .longFormAudio
         #else
-        return .longFormVideo
+        return .default
         #endif
     }
 
