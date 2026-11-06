@@ -7161,6 +7161,7 @@ public final class AetherEngine: ObservableObject {
     /// and won't auto-switch, DrHurt). An SDR master is kept so its subtitle renditions travel (#227).
     /// Loopback native path only; a remote-HLS source is already receiver-reachable, so it's left untouched.
     private(set) var airPlayActive = false
+    private(set) var externalPlaybackEndHeldForRoute = false
     private var externalPlaybackObservation: NSKeyValueObservation?
 
     /// True when the picture is on something other than this device's own layer: a wireless receiver or
@@ -7430,6 +7431,7 @@ public final class AetherEngine: ObservableObject {
                            + "holding the edge until the rebuilt item settles", category: .engine)
             return
         }
+        if holdsExternalPlaybackEndForRoute(active: active) { return }
         // #315: an already-ready session that only now loses the picture to an external screen gets no further
         // readiness edge, and on the wired path no reload either, so latch here too. No-op once latched.
         if active { latchFirstFrameForExternalPlaybackIfNeeded() }
@@ -7500,6 +7502,38 @@ public final class AetherEngine: ObservableObject {
                       skipInitialSeek: LiveReloadPolicy.skipInitialSeek(isLive: loadedOptions.isLive, isRejoin: true))
         armAirPlayProgressWatchdog(gen: loadGeneration, position: position ?? 0)
         return true
+    }
+
+    private func holdsExternalPlaybackEndForRoute(active: Bool) -> Bool {
+        guard Self.externalPlaybackEndIsHeldByRoute(
+            active: active, airPlayActive: airPlayActive, wirelessAirPlayRoute: Self.isWirelessAirPlayRoute()
+        ) else {
+            externalPlaybackEndHeldForRoute = false
+            return false
+        }
+        if !externalPlaybackEndHeldForRoute {
+            EngineLog.emit("[AirPlay] external playback false while the wireless receiver still holds the audio "
+                           + "route (an audio interruption pauses the receiver, it does not end AirPlay): keeping "
+                           + "the LAN session until the route leaves the receiver", category: .engine)
+        }
+        externalPlaybackEndHeldForRoute = true
+        return true
+    }
+
+    func reconsiderHeldExternalPlaybackEnd() {
+        guard externalPlaybackEndHeldForRoute else { return }
+        let external = isExternalPlaybackActiveNow
+        if external {
+            externalPlaybackEndHeldForRoute = false
+            return
+        }
+        guard Self.heldExternalPlaybackEndStands(
+            externalPlaybackActive: external, wirelessAirPlayRoute: Self.isWirelessAirPlayRoute()
+        ) else { return }
+        externalPlaybackEndHeldForRoute = false
+        EngineLog.emit("[AirPlay] the wireless receiver left the audio route: the held end of external playback "
+                       + "stands", category: .engine)
+        handleExternalPlaybackChange(active: false)
     }
 
     /// Re-read external playback after a session-preserving reload and act on it if it really changed (#227).
@@ -8473,7 +8507,10 @@ public final class AetherEngine: ObservableObject {
             forName: AVAudioSession.routeChangeNotification,
             object: AVAudioSession.sharedInstance(), queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in self?.recomputeAirPlayPictureStaysLocal() }
+            Task { @MainActor in
+                self?.recomputeAirPlayPictureStaysLocal()
+                self?.reconsiderHeldExternalPlaybackEnd()
+            }
         }
         lifecycleObservers.append(routeObserver)
         #endif
@@ -8517,8 +8554,10 @@ public final class AetherEngine: ObservableObject {
                     let shouldResume = AVAudioSession.InterruptionOptions(rawValue: optionsRaw).contains(.shouldResume)
                     // Background: only audio backends may resume (video is torn down / must not restart unseen).
                     #if os(iOS)
-                    let backgroundSafe = !self.isBackgrounded
-                        || self.audioAVPlayerActive || self.audioHost != nil || self.softwareHost != nil
+                    let backgroundSafe = Self.interruptionResumeIsBackgroundSafe(
+                        backgrounded: self.isBackgrounded,
+                        ownsAudioPath: self.audioAVPlayerActive || self.audioHost != nil || self.softwareHost != nil,
+                        nativeOnWirelessReceiver: self.playbackBackend == .native && self.airPlayActive)
                     #else
                     let backgroundSafe = true
                     #endif
