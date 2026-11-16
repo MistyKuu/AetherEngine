@@ -959,5 +959,6 @@ Limits: a consumer item replacement can still cause a short interruption, and th
 - **Where the tap sits.** The two routes that own a demux loop implement `LiveRecordingHost`: `HLSSegmentProducer` on the loopback route, `SoftwarePlaybackHost` on the software route. Their tap sits before the audio bridge, so the file keeps the source's own codecs. `.remoteBypass` cannot record, because the engine sees no bytes there.
 - **Never block the demux thread.** The tap only offers each packet to `LiveRecordingQueue`, a byte-bounded handoff that never waits. When it is full it refuses and counts the drop, and the recording ends as `.writeTooSlow` instead of stalling the picture.
 - **The writer.** `LiveRecordingWriter` drains the queue on its own queue, opens the file at the first video keyframe, and muxes. `RecordingState` is what `$recordingState` publishes.
+- **Dolby Vision.** The file keeps the source's Dolby Vision configuration record: the TS muxer writes the `DOVI` registration descriptor and the DOVI video stream descriptor from it, so playing the recording takes the same Dolby Vision route as the live channel. Without them the file holds every RPU but no record, and plays as its base layer (HDR10 for Profile 8.1, HLG for 8.4, wrong colours for Profile 5).
 
 Host contract: [api.md, Recording a live stream](api.md#recording-a-live-stream).

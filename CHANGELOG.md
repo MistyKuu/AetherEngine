@@ -54,6 +54,12 @@ the public-API contract.
   point. On a 5 minute presentation with keyframes 1.5 to 9 s apart, `segverify` found 35 of 35 segments
   independent (25 of 40 before), and seeks to 15, 150 and 285 s landed exactly (151.83 and 288.33 s before).
 
+- **A recording of a Dolby Vision channel plays back as Dolby Vision.** `startRecording(to:)` copied every
+  RPU into the file, but FFmpeg's MPEG-TS muxer wrote no Dolby Vision descriptor, so the file had no
+  configuration record. Played back, Profile 8.1 came out as HDR10, Profile 8.4 as HLG and Profile 5 as HDR10
+  with the wrong colours. FFmpegBuild now writes the `DOVI` registration descriptor and the DOVI video stream
+  descriptor from the source's record, and the recording opens with the source's profile and compatibility id.
+
 - **No thin bright line around upscaled DVDs (#846).** Many DVDs carry a dark half-line in the outermost
   rows and columns, which the ML pass sharpened into a bright line a few samples in. The outer 8 output samples
   on every side are now a bilinear scale of the source, as they already were on axes without room for the
