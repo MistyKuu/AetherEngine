@@ -46,14 +46,12 @@ struct LiveRebuildKeepsLivenessTests {
         #expect(!engine.isSequentialOrigin)
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("rebuild-\(UUID().uuidString).ts")
         defer { try? FileManager.default.removeItem(at: file) }
-        do {
-            try await engine.startRecording(to: file)
-            await engine.stopRecording()
-        } catch RecordingFailure.notLive {
-            Issue.record("startRecording refused the rebuilt live session as not live")
-        } catch {
+        try await engine.startRecording(to: file)
+        guard case .recording = engine.recordingState else {
+            Issue.record("the rebuilt live session did not start recording: \(engine.recordingState)")
             return
         }
+        await engine.stopRecording()
     }
 
     @Test("a film stays a film after the same rebuild")
