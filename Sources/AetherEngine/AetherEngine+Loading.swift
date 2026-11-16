@@ -2690,6 +2690,7 @@ extension AetherEngine {
         beginLoadInFlight(gen)
         defer { endLoadInFlight(gen) }
         loadedURL = url
+        adoptSessionLiveness(from: loadedOptions)
         lastDetectedVideoCodec = preservedVideoCodec
         lastRequiresDeinterlaceWarmup = preservedRequiresDeinterlaceWarmup
 

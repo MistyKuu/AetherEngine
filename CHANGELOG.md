@@ -47,6 +47,14 @@ the public-API contract.
 
 ### Fixed
 
+- **A live session stays live after an audio-track switch.** The rebuild behind `selectAudioTrack`
+  (and the disc-title pick and the custom-source `reloadAtCurrentPosition`) runs `stopInternal`, which
+  clears `isLive`, `isSequentialOrigin` and the live window, and then reopens through `loadNative` or
+  `loadSoftware`, which never set them again. A live MPEG-TS channel switched to its second audio track
+  came back with `isLive == false` and no DVR window, and every `startRecording` threw `.notLive` until
+  the next `load`. The rebuild now adopts the liveness of `loadedOptions` exactly as `load` does
+  (`adoptSessionLiveness`). Pinned by `LiveRebuildKeepsLivenessTests`.
+
 - **MPEG-DASH segments start on a keyframe, and seeks land where they were aimed (#1075).** A DASH
   source has no keyframe index, so the native route laid its HLS segments on an even grid that ignored the
   GOPs. Wherever a boundary missed a keyframe, the segment depended on the one before it and a seek landed
