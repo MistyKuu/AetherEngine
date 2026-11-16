@@ -17,14 +17,6 @@ struct LiveRebuildKeepsLivenessTests {
         #expect(failure == nil)
     }
 
-    private static func waitUntil(_ condition: () -> Bool) async throws {
-        let deadline = ContinuousClock.now + .seconds(20)
-        while !condition() {
-            guard ContinuousClock.now < deadline else { return }
-            try await Task.sleep(for: .milliseconds(50))
-        }
-    }
-
     @Test("a live channel is still live after an audio-track rebuild, with its window, and records")
     func liveChannelStaysLive() async throws {
         let origin = try #require(KeepAliveRangeOrigin(data: TinyTransportStreamFixture.data, contentType: "video/mp2t"))
@@ -39,7 +31,7 @@ struct LiveRebuildKeepsLivenessTests {
         #expect(engine.liveWindow != nil)
 
         try await Self.rebuild(engine)
-        try await Self.waitUntil { engine.state != .loading }
+        try await waitFor { engine.state != .loading }
 
         #expect(engine.isLive)
         #expect(engine.liveWindow != nil)
