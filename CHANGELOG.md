@@ -47,6 +47,11 @@ the public-API contract.
 
 ### Fixed
 
+- **CEA-608 captions no longer show XDS, CC2 or text-service characters sent on field 1.** The decoder wrote
+  every standard character pair of field 1 into the CC1 screen, whatever service it belonged to, so a
+  broadcast that carries an XDS packet (the network name, for one), the second caption channel or the text
+  service T1 on field 1 showed that data inside the captions. Characters now follow the data channel of the
+  last control code, and CC1's TR and RTD hand them to the text service until RCL, RU2-4 or RDC.
 - **A live session stays live after an audio-track switch.** The rebuild behind `selectAudioTrack`
   (and the disc-title pick and the custom-source `reloadAtCurrentPosition`) runs `stopInternal`, which
   clears `isLive`, `isSequentialOrigin` and the live window, and then reopens through `loadNative` or
